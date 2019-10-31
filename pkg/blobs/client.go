@@ -13,14 +13,14 @@ package blobs
 import (
 	"bytes"
 	"context"
-	"io"
-	"io/ioutil"
-
 	"github.com/cockroachdb/cockroach/pkg/blobs/blobspb"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/rpc"
 	"github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
 	"github.com/pkg/errors"
+	"google.golang.org/grpc/metadata"
+	"io"
+	"io/ioutil"
 )
 
 // BlobClient provides an interface for file access on all nodes' local storage.
@@ -30,15 +30,11 @@ type BlobClient interface {
 	// ReadFile fetches the named payload from the requested node,
 	// and stores it in memory. It then returns an io.ReadCloser to
 	// read the contents.
-	// TODO(georgiah): this currently sends the entire file over
-	// 	over the wire. Still need to implement streaming.
 	ReadFile(ctx context.Context, file string) (io.ReadCloser, error)
 
 	// WriteFile sends the named payload to the requested node.
 	// This method will read entire content of file and send
 	// it over to another node, based on the nodeID.
-	// TODO(georgiah): this currently sends the entire file over
-	// 	over the wire. Still need to implement streaming.
 	WriteFile(ctx context.Context, file string, content io.ReadSeeker) error
 
 	// List lists the corresponding filenames from the requested node.
@@ -66,6 +62,35 @@ func newRemoteClient(blobClient blobspb.BlobClient) BlobClient {
 }
 
 func (c *remoteClient) ReadFile(ctx context.Context, file string) (io.ReadCloser, error) {
+	stream, err := c.blobClient.GetStream(ctx, &blobspb.GetRequest{
+		Filename: file,
+	})
+	return newGetStreamReader(stream), errors.Wrap(err, "fetching file")
+}
+
+func (c *remoteClient) WriteFile(ctx context.Context, file string, content io.ReadSeeker) error {
+	ctx = metadata.AppendToOutgoingContext(ctx, "filename", file)
+	stream, err := c.blobClient.PutStream(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_, closeErr := stream.CloseAndRecv()
+		if err != nil {
+			return
+		}
+		err = closeErr
+	}()
+	return streamContent(stream, content)
+}
+
+type remoteClientNotStreamed struct {
+	*remoteClient
+}
+
+func (c *remoteClientNotStreamed) ReadFile(
+	ctx context.Context, file string,
+) (io.ReadCloser, error) {
 	resp, err := c.blobClient.GetBlob(ctx, &blobspb.GetRequest{
 		Filename: file,
 	})
@@ -75,16 +100,17 @@ func (c *remoteClient) ReadFile(ctx context.Context, file string) (io.ReadCloser
 	return ioutil.NopCloser(bytes.NewReader(resp.Payload)), err
 }
 
-func (c *remoteClient) WriteFile(ctx context.Context, file string, content io.ReadSeeker) error {
+func (c *remoteClientNotStreamed) WriteFile(
+	ctx context.Context, file string, content io.ReadSeeker,
+) error {
 	payload, err := ioutil.ReadAll(content)
 	if err != nil {
 		return errors.Wrap(err, "reading file contents")
 	}
-	b, err := c.blobClient.PutBlob(ctx, &blobspb.PutRequest{
+	_, err = c.blobClient.PutBlob(ctx, &blobspb.PutRequest{
 		Filename: file,
 		Payload:  payload,
 	})
-	b.Size()
 	return err
 }
 

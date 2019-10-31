@@ -34,7 +34,7 @@ import (
 	"github.com/cockroachdb/errors"
 )
 
-func createTestResources(t *testing.T) (string, string, *stop.Stopper, func()) {
+func createTestResources(t testing.TB) (string, string, *stop.Stopper, func()) {
 	localExternalDir, cleanupFn := testutils.TempDir(t)
 	remoteExternalDir, cleanupFn2 := testutils.TempDir(t)
 	stopper := stop.NewStopper()
@@ -47,7 +47,7 @@ func createTestResources(t *testing.T) (string, string, *stop.Stopper, func()) {
 }
 
 func setUpService(
-	t *testing.T,
+	t testing.TB,
 	rpcContext *rpc.Context,
 	localNodeID roachpb.NodeID,
 	remoteNodeID roachpb.NodeID,
@@ -93,7 +93,7 @@ func setUpService(
 	)
 }
 
-func writeTestFile(t *testing.T, file string, content []byte) {
+func writeTestFile(t testing.TB, file string, content []byte) {
 	err := os.MkdirAll(filepath.Dir(file), 0755)
 	if err != nil {
 		t.Fatal(err)
@@ -173,16 +173,16 @@ func TestBlobClientReadFile(t *testing.T) {
 			}
 			reader, err := blobClient.ReadFile(ctx, tc.filename)
 			if err != nil {
-				if tc.err != "" && testutils.IsError(err, tc.err) {
-					// correct error was returned
-					return
-				}
 				t.Fatal(err)
 			}
 			// Check that fetched file content is correct
 			content, err := ioutil.ReadAll(reader)
 			if err != nil {
-				t.Fatal(err, "unable to read fetched file")
+				if tc.err != "" && testutils.IsError(err, tc.err) {
+					// correct error was returned
+					return
+				}
+				t.Fatal(err)
 			}
 			if !bytes.Equal(content, tc.fileContent) {
 				t.Fatal(fmt.Sprintf(`fetched file content incorrect, expected %s, got %s`, tc.fileContent, content))
