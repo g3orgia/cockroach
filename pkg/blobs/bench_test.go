@@ -36,8 +36,8 @@ type benchmarkTestCase struct {
 	fileName   string
 }
 
-var fileSizes = []int64{1<<20, 64 * 1<<20, 265 * 1<<20, 1<<30}
-var chunkSizes = []int{0, 8 * 1<<10, 32 * 1<<10, 64 * 1<<10, 128 * 1<<10, 256 * 1<<10}
+var fileSizes = []int64{1 << 20, 64 * 1 << 20, 265 * 1 << 20, 1 << 30}
+var chunkSizes = []int{0, 8 * 1 << 10, 32 * 1 << 10, 64 * 1 << 10, 128 * 1 << 10, 256 * 1 << 10, 512 * 1 << 10, 1 << 20}
 
 func writeLargeFile(t testing.TB, file string, size int64) {
 	err := os.MkdirAll(filepath.Dir(file), 0755)
@@ -73,7 +73,7 @@ func BenchmarkStreamingReadFile(b *testing.B) {
 		remoteExternalDir: remoteExternalDir,
 		blobClient:        blobClient,
 		fileSize:          0, // we should set this for every test.
-		fileName:	         "test/largefile.csv",
+		fileName:          "test/largefile.csv",
 	}
 
 	for _, s := range fileSizes {
@@ -88,7 +88,7 @@ func BenchmarkStreamingReadFile(b *testing.B) {
 				params := *params
 				if !withStreaming {
 					bc := params.blobClient
-					params.blobClient = &remoteClientNotStreamed{remoteClient:bc.(*remoteClient)}
+					params.blobClient = &remoteClientNotStreamed{remoteClient: bc.(*remoteClient)}
 				}
 				benchmarkStreamingReadFile(b, &params)
 			})
@@ -98,7 +98,7 @@ func BenchmarkStreamingReadFile(b *testing.B) {
 
 func benchmarkStreamingReadFile(b *testing.B, tc *benchmarkTestCase) {
 	writeLargeFile(b, filepath.Join(tc.remoteExternalDir, tc.fileName), tc.fileSize)
-	writeTo := localStorage{ externalIODir: tc.localExternalDir }
+	writeTo := localStorage{externalIODir: tc.localExternalDir}
 	b.ResetTimer()
 	b.SetBytes(tc.fileSize)
 	for i := 0; i < b.N; i++ {
@@ -142,7 +142,7 @@ func BenchmarkStreamingWriteFile(b *testing.B) {
 		remoteExternalDir: remoteExternalDir,
 		blobClient:        blobClient,
 		fileSize:          0, // we should set this for every test.
-		fileName:	         "test/largefile.csv",
+		fileName:          "test/largefile.csv",
 	}
 
 	for _, s := range fileSizes {
@@ -157,7 +157,7 @@ func BenchmarkStreamingWriteFile(b *testing.B) {
 				params := *params
 				if !withStreaming {
 					bc := params.blobClient
-					params.blobClient = &remoteClientNotStreamed{remoteClient:bc.(*remoteClient)}
+					params.blobClient = &remoteClientNotStreamed{remoteClient: bc.(*remoteClient)}
 				}
 				benchmarkStreamingWriteFile(b, &params)
 			})

@@ -16,7 +16,7 @@ import (
 	"github.com/cockroachdb/cockroach/pkg/blobs/blobspb"
 )
 
-var chunkSize = 128 * 1<<10
+var chunkSize = 128 * 1 << 10
 
 // blobStreamReader implements a ReadCloser which receives
 // gRPC streaming messages.

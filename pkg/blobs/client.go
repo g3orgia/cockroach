@@ -13,14 +13,15 @@ package blobs
 import (
 	"bytes"
 	"context"
+	"io"
+	"io/ioutil"
+
 	"github.com/cockroachdb/cockroach/pkg/blobs/blobspb"
 	"github.com/cockroachdb/cockroach/pkg/roachpb"
 	"github.com/cockroachdb/cockroach/pkg/rpc"
 	"github.com/cockroachdb/cockroach/pkg/rpc/nodedialer"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/metadata"
-	"io"
-	"io/ioutil"
 )
 
 // BlobClient provides an interface for file access on all nodes' local storage.
